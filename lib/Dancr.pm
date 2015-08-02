@@ -1,7 +1,5 @@
 package Dancr;
 
-our $VERSION = '0.1';
-
 use Dancer2;
 use DBI;
 use File::Spec;
@@ -12,19 +10,16 @@ use Dancer2::Plugin::Passphrase;
 use Dancer2::Plugin::Feed;
 use POSIX qw/strftime/;
 
-set 'public_dir' => dirname(__FILE__)."/../public";
-set 'upload_dir' => '/uploadsFolder/';
-set 'database'     => File::Spec->catfile(File::Spec->tmpdir(), 'dancr.db');
-set 'session'      => 'Simple';
-set 'template'     => 'template_toolkit';
-set 'logger'       => 'console';
+our $VERSION = '0.001';
+
+my $flash;
+
+set 'upload_dir'   => '/uploadsFolder/';
+set 'database'     => File::Spec->catfile(File::Spec->tmpdir, 'dancr.db');
 set 'log'          => 'debug';
 set 'show_errors'  => 1;
 set 'startup_info' => 1;
 set 'warnings'     => 1;
-set 'layout'       => 'main';
-
-my $flash;
 
 sub set_flash {
     my $message = shift;
@@ -45,21 +40,22 @@ sub connect_db {
 
 sub init_db {
     my $schema = read_file('./schema.sql');
-    my @sqls = split(/;/, $schema);
-    my $db = connect_db();
-    foreach $a (@sqls){
-        $db->do($a) or die $db->errstr;
+    my @sqls   = split(/;/, $schema);
+    my $db     = connect_db();
+
+    foreach my $sql (@sqls){
+        $db->do($sql) or die $db->errstr;
     }
 }
 
 hook before_template => sub {
     my $tokens = shift;
-    $tokens->{'css_url'} = request->base . 'css/style1.css';
-    $tokens->{'login_url'} = uri_for('/login');
+    $tokens->{'css_url'}      = request->base . 'css/style1.css';
+    $tokens->{'login_url'}    = uri_for('/login');
     $tokens->{'register_url'} = uri_for('/register');
-    $tokens->{'logout_url'} = uri_for('/logout');
-    $tokens->{'feed_url'} = uri_for('/feed');
-	$tokens->{'index_url'} = request->base;
+    $tokens->{'logout_url'}   = uri_for('/logout');
+    $tokens->{'feed_url'}     = uri_for('/feed');
+	$tokens->{'index_url'}    = request->base;
 };
 
 get '/' => needs login => sub {
@@ -74,7 +70,7 @@ get '/' => needs login => sub {
     my $filenames = $db->prepare($sql) or die $db->errstr;
     $filenames->execute or die $sth->errstr;
 
-    template 'show_entries.tt', {
+    template show_entries => {
         'msg'              => get_flash(),
         'add_entry_url'    => uri_for('/add'),
         'edit_entry_url'   => uri_for('/edit'),
@@ -84,12 +80,14 @@ get '/' => needs login => sub {
         'uname'            => session('user')
     };
 };
+
 sub _nl2br {
 	#This function converts "\n" to <br/>. So that when we display the text, we don't loose the enter.
 		my $t = shift || return;
 		$t =~ s/([\r])/<br>/g;
 		return $t; 
 }
+
 post '/add' => needs login => sub {
 
     my $db  = connect_db();
@@ -256,4 +254,4 @@ get '/feed' => sub {
 
 init_db();
 start();
-true;
+1;
