@@ -62,45 +62,38 @@ get '/' => needs login => sub {
     if ( not session('logged_in') ){
     }
 
-    my $db = connect_db();
+    my $db  = connect_db();
     my $sql = 'select id, title, text, username, timestamp from entries order by id desc';
     my $sth = $db->prepare($sql) or die $db->errstr;
     $sth->execute or die $sth->errstr;
+
     $sql = 'select id,filename from filenames order by id desc';
     my $filenames = $db->prepare($sql) or die $db->errstr;
     $filenames->execute or die $sth->errstr;
 
     template show_entries => {
-        'msg'              => get_flash(),
-        'add_entry_url'    => uri_for('/add'),
-        'edit_entry_url'   => uri_for('/edit'),
-        'delete_entry_url' => uri_for('/delete'),
-        'entries'          => $sth->fetchall_hashref('id'),
-        'filenames'        => $filenames->fetchall_hashref('id'),
-        'uname'            => session('user')
+        msg              => get_flash(),
+        add_entry_url    => uri_for('/add'),
+        edit_entry_url   => uri_for('/edit'),
+        delete_entry_url => uri_for('/delete'),
+        entries          => $sth->fetchall_hashref('id'),
+        filenames        => $filenames->fetchall_hashref('id'),
+        uname            => session('user')
     };
 };
 
-sub _nl2br {
-    #This function converts "\n" to <br/>. So that when we display the text, we don't loose the enter.
-        my $t = shift || return;
-        $t =~ s/([\r])/<br>/g;
-        return $t;
-}
-
 post '/add' => needs login => sub {
-
-    my $db  = connect_db();
+    my $db     = connect_db();
     my $upload = request->upload('file');
     my $fname;
 
-    my $sql = 'insert into entries (title, text, username, timestamp) values (?, ?, ?, ?)';
-    my $sth = $db->prepare($sql) or die $db->errstr;
+    my $sql  = 'insert into entries (title, text, username, timestamp) values (?, ?, ?, ?)';
+    my $sth  = $db->prepare($sql) or die $db->errstr;
     my $date = strftime('%Y-%m-%d %T',localtime);
-    my $text = _nl2br(params->{'text'});
+    my $text = params->{'text'} =~ s/\r?\n/<br>/rg;
     $sth->execute(params->{'title'}, $text, session('user'), $date) or die $sth->errstr;
 
-    if($upload){
+    if ($upload){
         $fname = setting('upload_dir').$upload->filename;
         $upload->copy_to(setting('public_dir').$fname);
 
@@ -111,12 +104,14 @@ post '/add' => needs login => sub {
         $sth = $db->prepare($sql) or die $db->errstr;
         $sth->execute($row[0], $fname) or die $sth->errstr;
     }
+
     set_flash('New entry posted!');
     redirect '/';
 };
 
 any ['get' ,'post'] => '/edit' => needs login =>  sub {
     session('user'); #without this line tiny auth redirects to login page again and again
+
     my $db  = connect_db();
     my $sql = "SELECT title, text, username FROM entries WHERE id=?";
     my $sth = $db->prepare($sql) or die $db->errstr;
@@ -129,10 +124,10 @@ any ['get' ,'post'] => '/edit' => needs login =>  sub {
     }
 
     template edit => {
-        'title_value'      => $row[0],
-        'text_value'       => $row[1],
-        'rowid'            => params->{'rowid'},
-        'update_entry_url' => uri_for('/update'),
+        title_value      => $row[0],
+        text_value       => $row[1],
+        rowid            => params->{'rowid'},
+        update_entry_url => uri_for('/update'),
     };
 };
 
@@ -159,14 +154,18 @@ post '/delete' => needs login => sub{
 
     $sql = "select filename from filenames where id=?";
     @row = $db->selectrow_array($sql,undef,params->{'rowid'});
+
     my $fname = setting('public_dir').$row[0];
     unlink $fname;
+
     $sql = 'delete from entries where id=?';
     my $sth = $db->prepare($sql) or die $db->errstr;
     $sth->execute(params->{'rowid'}) or die $sth->errstr;
+
     $sql = 'delete from filenames where id=?';
     $sth = $db->prepare($sql) or die $db->errstr;
     $sth->execute(params->{'rowid'}) or die $sth->errstr;
+
     set_flash('Entry deleted!');
     redirect '/';
 };
@@ -194,6 +193,7 @@ any ['get', 'post'] => '/login' => sub {
             #return redirect '/';
         }
     }
+
     # display login form
     template login => {
         err        => $err,
@@ -229,26 +229,29 @@ sub _articles {
     my $sth = $db->prepare($sql) or die $db->errstr;
     $sth->execute() or die $DBI::errstr;
     my @ans = ();
-#We fetch rows from entries and create objects containing title and author elements
-    while(my $article = $sth->fetchrow_hashref())
-    {
+
+    # We fetch rows from entries and create objects containing title and author elements
+    while(my $article = $sth->fetchrow_hashref()) {
         my $feed ={};
         $feed->{title} = $article->{title};
         $feed->{author} = $article->{username};
         push @ans, $feed;
     }
+
     return \@ans;
 }
 
 get '/feed' => sub {
     my $feed;
     my $articles = _articles();
-    #create_atom_feed creates atom feeds using the array stored at $articles reference.
-    #The function uses attributes such as author, title, tagline etc to populate the feeds.
+
+    # create_atom_feed creates atom feeds using the array stored at $articles reference.
+    # The function uses attributes such as author, title, tagline etc to populate the feeds.
     $feed = create_atom_feed(
-        title => 'Dancer Blog Feed',
+        title   => 'Dancer Blog Feed',
         entries => $articles,
-        );
+    );
+
     return $feed;
 };
 
