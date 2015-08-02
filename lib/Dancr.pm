@@ -55,7 +55,7 @@ hook before_template => sub {
     $tokens->{'register_url'} = uri_for('/register');
     $tokens->{'logout_url'}   = uri_for('/logout');
     $tokens->{'feed_url'}     = uri_for('/feed');
-	$tokens->{'index_url'}    = request->base;
+    $tokens->{'index_url'}    = request->base;
 };
 
 get '/' => needs login => sub {
@@ -82,10 +82,10 @@ get '/' => needs login => sub {
 };
 
 sub _nl2br {
-	#This function converts "\n" to <br/>. So that when we display the text, we don't loose the enter.
-		my $t = shift || return;
-		$t =~ s/([\r])/<br>/g;
-		return $t; 
+    #This function converts "\n" to <br/>. So that when we display the text, we don't loose the enter.
+        my $t = shift || return;
+        $t =~ s/([\r])/<br>/g;
+        return $t;
 }
 
 post '/add' => needs login => sub {
@@ -97,7 +97,7 @@ post '/add' => needs login => sub {
     my $sql = 'insert into entries (title, text, username, timestamp) values (?, ?, ?, ?)';
     my $sth = $db->prepare($sql) or die $db->errstr;
     my $date = strftime('%Y-%m-%d %T',localtime);
-	my $text = _nl2br(params->{'text'});
+    my $text = _nl2br(params->{'text'});
     $sth->execute(params->{'title'}, $text, session('user'), $date) or die $sth->errstr;
 
     if($upload){
@@ -107,7 +107,7 @@ post '/add' => needs login => sub {
         $sql = "select id from entries where username =? and title =? and text=?";
         my @row = $db->selectrow_array($sql,undef,session('user'),params->{'title'},params->{'text'});
 
-		$sql = 'insert into filenames (id, filename) values (?, ?)';
+        $sql = 'insert into filenames (id, filename) values (?, ?)';
         $sth = $db->prepare($sql) or die $db->errstr;
         $sth->execute($row[0], $fname) or die $sth->errstr;
     }
@@ -151,7 +151,7 @@ post '/delete' => needs login => sub{
     my $db  = connect_db();
     my $sql = "SELECT username FROM entries WHERE id=?";
     my @row = $db->selectrow_array($sql,undef,params->{'rowid'});
-    
+
     if ( $row[0] ne session('user')) {
         set_flash('Unauthorized access');
         redirect '/';
@@ -232,9 +232,9 @@ sub _articles {
 #We fetch rows from entries and create objects containing title and author elements
     while(my $article = $sth->fetchrow_hashref())
     {
-		my $feed ={};
-		$feed->{title} = $article->{title};
-		$feed->{author} = $article->{username};
+        my $feed ={};
+        $feed->{title} = $article->{title};
+        $feed->{author} = $article->{username};
         push @ans, $feed;
     }
     return \@ans;
@@ -243,8 +243,8 @@ sub _articles {
 get '/feed' => sub {
     my $feed;
     my $articles = _articles();
-	#create_atom_feed creates atom feeds using the array stored at $articles reference.
-	#The function uses attributes such as author, title, tagline etc to populate the feeds.
+    #create_atom_feed creates atom feeds using the array stored at $articles reference.
+    #The function uses attributes such as author, title, tagline etc to populate the feeds.
     $feed = create_atom_feed(
         title => 'Dancer Blog Feed',
         entries => $articles,
