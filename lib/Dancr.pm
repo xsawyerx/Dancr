@@ -128,7 +128,7 @@ any ['get' ,'post'] => '/edit' => needs login =>  sub {
         redirect '/';
     }
 
-    template 'edit.tt', {
+    template edit => {
         'title_value'      => $row[0],
         'text_value'       => $row[1],
         'rowid'            => params->{'rowid'},
@@ -195,9 +195,9 @@ any ['get', 'post'] => '/login' => sub {
         }
     }
     # display login form
-    template 'login.tt', {
-        'err' => $err,
-        'return_url' => params->{return_url}
+    template login => {
+        err        => $err,
+        return_url => params->{return_url},
     };
 };
 
@@ -214,7 +214,7 @@ any ['get', 'post'] => '/register' => sub {
     }
 
     # display register form
-    template 'register.tt';
+    template 'register';
 };
 
 get '/logout' => needs login => sub {
